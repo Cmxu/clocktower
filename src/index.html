@@ -346,7 +346,7 @@
         </div>
         <div class="chat-input-wrapper">
           <div class="chat-input-row">
-            <input type="text" id="chat-input" placeholder="Type a message... (@ for mentions)" maxlength="500" autocomplete="off">
+            <textarea id="chat-input" placeholder="Type a message... (@ for mentions)" maxlength="500" rows="1"></textarea>
             <button id="chat-send-btn" class="btn-primary chat-send-btn">
               <span>📤</span>
             </button>
@@ -355,6 +355,12 @@
           <div id="chat-autocomplete" class="chat-autocomplete hidden">
             <!-- Autocomplete options will be inserted here -->
           </div>
+        </div>
+        <div id="chat-temp-option" class="chat-temp-option hidden">
+          <label class="temp-checkbox-label">
+            <input type="checkbox" id="chat-temp-checkbox">
+            <span class="temp-checkbox-text">⏱️ Temporary message (disappears after 30s)</span>
+          </label>
         </div>
       </div>
     </div>

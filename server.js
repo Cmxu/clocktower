@@ -785,7 +785,7 @@ app.post('/api/room/:code/unmark-drunk', (req, res) => {
 app.post('/api/room/:code/chat', (req, res) => {
   const playerId = req.cookies.playerId;
   const code = req.params.code.toUpperCase();
-  const { content, recipientId } = req.body;
+  const { content, recipientId, isTemporary } = req.body;
   
   if (!playerId || !players.has(playerId)) {
     return res.status(401).json({ error: 'Invalid session' });
@@ -835,14 +835,17 @@ app.post('/api/room/:code/chat', (req, res) => {
     isFromHost: isHost,
     recipientId: recipientId || null, // null means "everyone" (host only)
     content: content.trim(),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    isTemporary: isHost && isTemporary === true // Only host can send temporary messages
   };
   
-  // Store message
-  if (!chatMessages.has(code)) {
-    chatMessages.set(code, []);
+  // Store message (but not temporary messages - they're ephemeral)
+  if (!message.isTemporary) {
+    if (!chatMessages.has(code)) {
+      chatMessages.set(code, []);
+    }
+    chatMessages.get(code).push(message);
   }
-  chatMessages.get(code).push(message);
   
   // Emit to appropriate recipients
   if (recipientId) {

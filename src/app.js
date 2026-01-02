@@ -501,9 +501,18 @@ class ClockTowerApp {
     });
     
     document.getElementById('chat-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && !this.autocompleteItems.length) {
+      // Enter sends message, Shift+Enter adds newline
+      if (e.key === 'Enter' && !e.shiftKey && !this.autocompleteItems.length) {
+        e.preventDefault();
         this.sendChatMessage();
       }
+    });
+    
+    // Auto-resize textarea as user types
+    document.getElementById('chat-input').addEventListener('input', () => {
+      const textarea = document.getElementById('chat-input');
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
     });
     
     // Chat autocomplete handlers
@@ -2046,11 +2055,15 @@ class ClockTowerApp {
       composer.classList.remove('hidden');
       recipientSelector.classList.remove('hidden');
       chatInput.placeholder = 'Type a message... (@ for mentions)';
+      // Show temporary message option for host
+      document.getElementById('chat-temp-option').classList.remove('hidden');
     } else {
       // Players can only message the host (no recipient selector needed)
       composer.classList.remove('hidden');
       recipientSelector.classList.add('hidden');
       chatInput.placeholder = 'Message the host...';
+      // Hide temporary message option for non-hosts
+      document.getElementById('chat-temp-option').classList.add('hidden');
     }
     
     // Scroll to bottom
@@ -2106,8 +2119,13 @@ class ClockTowerApp {
     // Non-host players always message the host
     // Host can choose recipients
     let recipientId;
+    let isTemporary = false;
+    
     if (this.player.isHost) {
       recipientId = recipientSelect.value === 'all' ? null : recipientSelect.value;
+      // Check if temporary message is selected
+      const tempCheckbox = document.getElementById('chat-temp-checkbox');
+      isTemporary = tempCheckbox && tempCheckbox.checked;
     } else {
       // Players send to host
       recipientId = this.room.hostId;
@@ -2119,7 +2137,8 @@ class ClockTowerApp {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           content,
-          recipientId
+          recipientId,
+          isTemporary
         })
       });
       
@@ -2129,8 +2148,9 @@ class ClockTowerApp {
         return;
       }
       
-      // Clear input on success
+      // Clear input on success and reset height
       input.value = '';
+      input.style.height = 'auto';
       this.hideAutocomplete();
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -2178,6 +2198,7 @@ class ClockTowerApp {
     
     const isDm = message.recipientId !== null;
     const isFromHost = message.isFromHost !== false; // Default to true for backwards compatibility
+    const isTemporary = message.isTemporary === true;
     const messageClass = isDm ? 'is-dm' : 'is-group';
     const badgeClass = isDm ? 'dm' : 'group';
     const badgeText = isDm ? '🔒 Private' : '👥 Everyone';
@@ -2194,21 +2215,30 @@ class ClockTowerApp {
     const parsedContent = this.parseMentions(this.escapeHtml(message.content));
     
     const messageEl = document.createElement('div');
-    messageEl.className = `chat-message ${messageClass} ${isFromHost ? 'from-host' : 'from-player'}`;
+    messageEl.className = `chat-message ${messageClass} ${isFromHost ? 'from-host' : 'from-player'} ${isTemporary ? 'is-temporary' : ''}`;
     messageEl.dataset.senderId = message.senderId;
     messageEl.dataset.recipientId = message.recipientId || 'all';
     messageEl.dataset.isFromHost = isFromHost;
+    
+    // Build temp badge HTML if temporary
+    const tempBadgeHtml = isTemporary ? '<span class="chat-message-badge temp">⏱️ <span class="temp-countdown">30</span>s</span>' : '';
     
     messageEl.innerHTML = `
       <div class="chat-message-header">
         <span class="chat-message-sender">${message.senderEmoji} ${this.escapeHtml(senderName)}</span>
         <span class="chat-message-badge ${badgeClass}">${badgeText}</span>
+        ${tempBadgeHtml}
         <span class="chat-message-time">${time}</span>
       </div>
       <div class="chat-message-content">${parsedContent}</div>
     `;
     
     container.appendChild(messageEl);
+    
+    // Start countdown for temporary messages
+    if (isTemporary) {
+      this.startTempMessageCountdown(messageEl);
+    }
     
     // Add click handler for host to quickly reply
     if (this.player && this.player.isHost) {
@@ -2229,6 +2259,41 @@ class ClockTowerApp {
         this.openAlmanacWithRole(roleName);
       });
     });
+  }
+  
+  startTempMessageCountdown(messageEl) {
+    let secondsLeft = 30;
+    const countdownEl = messageEl.querySelector('.temp-countdown');
+    
+    const interval = setInterval(() => {
+      secondsLeft--;
+      
+      if (countdownEl) {
+        countdownEl.textContent = secondsLeft;
+      }
+      
+      // Add warning class when time is low
+      if (secondsLeft <= 10) {
+        messageEl.classList.add('temp-warning');
+      }
+      if (secondsLeft <= 5) {
+        messageEl.classList.add('temp-critical');
+      }
+      
+      if (secondsLeft <= 0) {
+        clearInterval(interval);
+        // Fade out and remove
+        messageEl.classList.add('temp-fading');
+        setTimeout(() => {
+          messageEl.remove();
+          // Show empty state if no messages left
+          const container = document.getElementById('chat-messages');
+          if (container && container.querySelectorAll('.chat-message').length === 0) {
+            container.innerHTML = '<div class="chat-empty">No messages yet</div>';
+          }
+        }, 500);
+      }
+    }, 1000);
   }
   
   selectRecipientFromMessage(messageEl) {
@@ -2559,6 +2624,9 @@ class ClockTowerApp {
       }
       return match;
     });
+    
+    // Convert newlines to <br> tags
+    parsed = parsed.replace(/\n/g, '<br>');
     
     return parsed;
   }
