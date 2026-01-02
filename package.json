@@ -1,6 +1,6 @@
 {
   "name": "blood-on-the-clocktower",
-  "version": "0.9.6",
+  "version": "0.9.8",
   "description": "Blood on the Clocktower online game lobby",
   "main": "server.js",
   "targets": {

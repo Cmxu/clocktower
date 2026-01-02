@@ -323,27 +323,41 @@
   <div id="chat-panel" class="side-panel chat-panel hidden">
     <div class="side-panel-backdrop"></div>
     <div class="side-panel-content chat-panel-content">
+      <div class="chat-panel-resize-handle" id="chat-panel-resize-handle">
+        <span class="resize-dot"></span>
+        <span class="resize-dot"></span>
+        <span class="resize-dot"></span>
+      </div>
       <div class="side-panel-header">
         <h3><span class="icon">💬</span> Messages</h3>
         <button id="close-chat-btn" class="close-btn">✕</button>
       </div>
-      
+
       <div class="side-panel-body chat-body">
-        <div class="chat-messages" id="chat-messages">
-          <!-- Messages will be inserted here -->
-          <div class="chat-empty">No messages yet</div>
+        <div class="chat-layout">
+          <!-- Host-only: Chat tabs for selecting recipient -->
+          <div id="chat-tabs-container" class="chat-tabs-container hidden">
+            <div class="chat-tabs" id="chat-tabs">
+              <!-- Tabs will be inserted here -->
+            </div>
+            <div class="chat-tabs-resize-handle" id="chat-tabs-resize-handle">
+              <span class="resize-dot"></span>
+              <span class="resize-dot"></span>
+              <span class="resize-dot"></span>
+            </div>
+          </div>
+
+          <div class="chat-messages-wrapper">
+            <div class="chat-messages" id="chat-messages">
+              <!-- Messages will be inserted here -->
+              <div class="chat-empty">No messages yet</div>
+            </div>
+          </div>
         </div>
       </div>
-      
+
       <!-- Host-only: Message composer -->
       <div id="chat-composer" class="chat-composer hidden">
-        <div class="chat-recipient-selector">
-          <label>Send to:</label>
-          <select id="chat-recipient">
-            <option value="all">👥 Everyone</option>
-            <!-- Player options will be inserted here -->
-          </select>
-        </div>
         <div class="chat-input-wrapper">
           <div class="chat-input-row">
             <textarea id="chat-input" placeholder="Type a message... (@ for mentions)" maxlength="500" rows="1"></textarea>
@@ -359,7 +373,7 @@
         <div id="chat-temp-option" class="chat-temp-option hidden">
           <label class="temp-checkbox-label">
             <input type="checkbox" id="chat-temp-checkbox">
-            <span class="temp-checkbox-text">⏱️ Temporary message (disappears after 30s)</span>
+            <span class="temp-checkbox-text">⏱️ Temp message (30s)</span>
           </label>
         </div>
       </div>

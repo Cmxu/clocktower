@@ -781,6 +781,54 @@ app.post('/api/room/:code/unmark-drunk', (req, res) => {
   res.json({ success: true });
 });
 
+// API: Remove player from room (host only)
+app.post('/api/room/:code/remove-player', (req, res) => {
+  const playerId = req.cookies.playerId;
+  const code = req.params.code.toUpperCase();
+  const { targetPlayerId } = req.body;
+  
+  if (!playerId || !players.has(playerId)) {
+    return res.status(401).json({ error: 'Invalid session' });
+  }
+  
+  if (!rooms.has(code)) {
+    return res.status(404).json({ error: 'Room not found' });
+  }
+  
+  const room = rooms.get(code);
+  
+  if (room.hostId !== playerId) {
+    return res.status(403).json({ error: 'Only the host can remove players' });
+  }
+  
+  // Cannot remove yourself (the host)
+  if (targetPlayerId === playerId) {
+    return res.status(400).json({ error: 'Cannot remove yourself' });
+  }
+  
+  if (!room.players.includes(targetPlayerId)) {
+    return res.status(400).json({ error: 'Player not in room' });
+  }
+  
+  const targetPlayer = players.get(targetPlayerId);
+  const targetName = targetPlayer ? targetPlayer.username : 'Unknown';
+  const targetEmoji = targetPlayer ? targetPlayer.emoji : '❓';
+  
+  // Remove the player from the room
+  leaveRoom(targetPlayerId, code);
+  
+  // Emit event to notify all players (including the removed player)
+  io.to(code).emit('playerRemoved', { 
+    playerId: targetPlayerId,
+    username: targetName,
+    emoji: targetEmoji
+  });
+  
+  console.log(`Player ${targetName} was removed from room ${code} by host`);
+  
+  res.json({ success: true });
+});
+
 // API: Send chat message (host can message anyone, players can only message host)
 app.post('/api/room/:code/chat', (req, res) => {
   const playerId = req.cookies.playerId;

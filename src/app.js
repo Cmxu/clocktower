@@ -58,6 +58,7 @@ class ClockTowerApp {
     this.chatMessages = []; // Array of chat messages
     this.hasUnreadMessages = false;
     this.isChatOpen = false;
+    this.selectedChatTab = 'all'; // Current selected chat tab (player ID or 'all')
     
     // Autocomplete state
     this.autocompleteItems = [];
@@ -347,6 +348,30 @@ class ClockTowerApp {
       this.renderPlayers();
     });
     
+    this.socket.on('playerRemoved', ({ playerId, username, emoji }) => {
+      // If this player was removed, redirect to menu
+      if (this.player && this.player.id === playerId) {
+        this.showToast('You have been removed from the room by the host', 'error');
+        this.room = null;
+        this.roomPlayers = [];
+        this.playerOrder = [];
+        this.player.roomCode = null;
+        this.player.isHost = false;
+        this.myRole = null;
+        this.isRoleCardHidden = false;
+        this.isDead = false;
+        this.selectedRoles = [];
+        this.grimoireData = [];
+        this.hideChatButton();
+        this.clearChat();
+        this.showScreen('menu-screen');
+      } else {
+        // Another player was removed
+        this.showToast(`${emoji} ${username || 'A player'} was removed from the room`, 'error');
+        this.refreshRoomPlayers();
+      }
+    });
+    
     // Chat message received
     this.socket.on('chatMessage', (message) => {
       this.handleChatMessage(message);
@@ -490,6 +515,12 @@ class ClockTowerApp {
       this.closeChatPanel();
     });
     
+    // Chat tabs resize handle
+    this.setupChatTabsResize();
+
+    // Chat panel resize handle
+    this.setupChatPanelResize();
+
     // Close chat panel when clicking backdrop
     document.querySelector('#chat-panel .side-panel-backdrop').addEventListener('click', () => {
       this.closeChatPanel();
@@ -1122,6 +1153,11 @@ class ClockTowerApp {
       this.renderPlayers();
       this.updateRoleSelectionUI();
       this.updateRoleSetUI();
+
+      // Update chat tabs if host
+      if (this.player && this.player.isHost && this.isChatOpen) {
+        this.updateChatTabs();
+      }
       
       // Fetch grimoire if host and roles are assigned
       if (this.player && this.player.isHost && this.room.rolesAssigned) {
@@ -1454,6 +1490,7 @@ class ClockTowerApp {
       playerEl.style.top = `${y}%`;
       
       playerEl.innerHTML = `
+        ${isHostView ? '<button class="remove-player-btn" title="Remove player from room">−</button>' : ''}
         ${isDead ? '<div class="death-overlay">💀</div>' : ''}
         <div class="emoji">${player.emoji}</div>
         <div class="name">${this.escapeHtml(player.username) || 'Unknown'}</div>
@@ -1461,6 +1498,18 @@ class ClockTowerApp {
       `;
       
       container.appendChild(playerEl);
+      
+      // Add click handler for remove button (host only)
+      if (isHostView) {
+        const removeBtn = playerEl.querySelector('.remove-player-btn');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            this.showRemovePlayerConfirm(player);
+          });
+        }
+      }
       
       // Add drag-and-drop for host
       if (isHostView) {
@@ -1479,7 +1528,12 @@ class ClockTowerApp {
   
   handleDragStart(e, element, player) {
     if (e.button !== 0) return; // Only left click
-    
+
+    // Don't start drag if clicking on a button or interactive element
+    if (e.target.closest('button, a, input, select, textarea')) {
+      return;
+    }
+
     e.preventDefault();
     this.draggedPlayer = player;
     this.draggedElement = element;
@@ -1506,7 +1560,12 @@ class ClockTowerApp {
   
   handleTouchStart(e, element, player) {
     if (e.touches.length !== 1) return;
-    
+
+    // Don't start drag if touching a button or interactive element
+    if (e.target.closest('button, a, input, select, textarea')) {
+      return;
+    }
+
     e.preventDefault();
     this.draggedPlayer = player;
     this.draggedElement = element;
@@ -2023,49 +2082,124 @@ class ClockTowerApp {
     }
   }
   
+  showRemovePlayerConfirm(player) {
+    // Create confirmation popup
+    const popup = document.createElement('div');
+    popup.className = 'confirm-popup-overlay';
+    popup.innerHTML = `
+      <div class="confirm-popup">
+        <div class="confirm-popup-icon">⚠️</div>
+        <div class="confirm-popup-title">Remove Player?</div>
+        <div class="confirm-popup-message">
+          Are you sure you want to remove <strong>${player.emoji} ${this.escapeHtml(player.username) || 'this player'}</strong> from the room?
+        </div>
+        <div class="confirm-popup-buttons">
+          <button class="btn-secondary confirm-cancel-btn">Cancel</button>
+          <button class="btn-danger confirm-remove-btn">Remove</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    // Handle cancel
+    popup.querySelector('.confirm-cancel-btn').addEventListener('click', () => {
+      popup.remove();
+    });
+    
+    // Handle confirm
+    popup.querySelector('.confirm-remove-btn').addEventListener('click', () => {
+      popup.remove();
+      this.removePlayer(player.id);
+    });
+    
+    // Handle clicking backdrop
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) {
+        popup.remove();
+      }
+    });
+    
+    // Handle escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        popup.remove();
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+  }
+  
+  async removePlayer(targetPlayerId) {
+    if (!this.player || !this.player.isHost || !this.room) return;
+    
+    try {
+      const response = await fetch(`/api/room/${this.room.code}/remove-player`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetPlayerId })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        this.showToast(error.error || 'Failed to remove player', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to remove player:', error);
+      this.showToast('Failed to remove player', 'error');
+    }
+  }
+  
   // ===== CHAT FUNCTIONALITY =====
   
   openChatPanel(preselectedPlayerId = null) {
     const panel = document.getElementById('chat-panel');
     panel.classList.remove('hidden');
     this.isChatOpen = true;
-    
+
     // Clear unread indicator
     this.hasUnreadMessages = false;
     document.getElementById('chat-btn').classList.remove('has-unread');
-    
-    // Update recipient selector with current players
-    this.updateChatRecipientSelector();
-    
-    // Pre-select a player if specified
-    if (preselectedPlayerId) {
-      const select = document.getElementById('chat-recipient');
-      if (select.querySelector(`option[value="${preselectedPlayerId}"]`)) {
-        select.value = preselectedPlayerId;
-      }
-    }
-    
+
     // Show composer for everyone (host and players can both send messages)
     const composer = document.getElementById('chat-composer');
-    const recipientSelector = document.querySelector('.chat-recipient-selector');
     const chatInput = document.getElementById('chat-input');
-    
+    const tabsContainer = document.getElementById('chat-tabs-container');
+
     if (this.player && this.player.isHost) {
-      // Host can choose recipients
+      // Host uses tabs to select recipients
       composer.classList.remove('hidden');
-      recipientSelector.classList.remove('hidden');
       chatInput.placeholder = 'Type a message... (@ for mentions)';
+
+      // Show tabs container
+      if (tabsContainer) {
+        tabsContainer.classList.remove('hidden');
+      }
+
+      // Update tabs with current players
+      this.updateChatTabs();
+
+      // Pre-select a tab if specified
+      if (preselectedPlayerId) {
+        this.selectChatTab(preselectedPlayerId);
+      }
+
       // Show temporary message option for host
       document.getElementById('chat-temp-option').classList.remove('hidden');
     } else {
-      // Players can only message the host (no recipient selector needed)
+      // Players can only message the host (no tabs needed)
       composer.classList.remove('hidden');
-      recipientSelector.classList.add('hidden');
       chatInput.placeholder = 'Message the host...';
+
+      // Hide tabs container
+      if (tabsContainer) {
+        tabsContainer.classList.add('hidden');
+      }
+
       // Hide temporary message option for non-hosts
       document.getElementById('chat-temp-option').classList.add('hidden');
     }
-    
+
     // Scroll to bottom
     const messagesContainer = document.getElementById('chat-messages');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -2083,46 +2217,225 @@ class ClockTowerApp {
     this.isChatOpen = false;
   }
   
-  updateChatRecipientSelector() {
-    const select = document.getElementById('chat-recipient');
-    if (!select || !this.player || !this.player.isHost) return;
+  setupChatTabsResize() {
+    const resizeHandle = document.getElementById('chat-tabs-resize-handle');
+    const tabsContainer = document.getElementById('chat-tabs-container');
     
-    // Keep the "Everyone" option and add players
-    const currentValue = select.value;
-    select.innerHTML = '<option value="all">👥 Everyone</option>';
+    if (!resizeHandle || !tabsContainer) return;
     
-    // Add all players except the host
-    for (const player of this.roomPlayers) {
-      if (player.id !== this.player.id) {
-        const option = document.createElement('option');
-        option.value = player.id;
-        option.textContent = `${player.emoji} ${player.username || 'Unknown'} (DM)`;
-        select.appendChild(option);
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+    
+    const startResize = (e) => {
+      isResizing = true;
+      startX = e.clientX || e.touches?.[0]?.clientX || 0;
+      startWidth = tabsContainer.offsetWidth;
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    };
+    
+    const doResize = (e) => {
+      if (!isResizing) return;
+      
+      const clientX = e.clientX || e.touches?.[0]?.clientX || 0;
+      const delta = clientX - startX;
+      const newWidth = Math.min(Math.max(startWidth + delta, 150), 500);
+      tabsContainer.style.width = newWidth + 'px';
+    };
+    
+    const stopResize = () => {
+      if (!isResizing) return;
+      isResizing = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      
+      // Save width preference
+      localStorage.setItem('chatTabsWidth', tabsContainer.offsetWidth);
+    };
+    
+    // Mouse events
+    resizeHandle.addEventListener('mousedown', startResize);
+    document.addEventListener('mousemove', doResize);
+    document.addEventListener('mouseup', stopResize);
+    
+    // Touch events for mobile
+    resizeHandle.addEventListener('touchstart', startResize);
+    document.addEventListener('touchmove', doResize);
+    document.addEventListener('touchend', stopResize);
+    
+    // Restore saved width
+    const savedWidth = localStorage.getItem('chatTabsWidth');
+    if (savedWidth) {
+      const width = parseInt(savedWidth, 10);
+      if (width >= 150 && width <= 500) {
+        tabsContainer.style.width = width + 'px';
       }
     }
-    
-    // Restore selection if still valid
-    if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) {
-      select.value = currentValue;
+  }
+
+  setupChatPanelResize() {
+    const resizeHandle = document.getElementById('chat-panel-resize-handle');
+    const panelContent = document.querySelector('#chat-panel .side-panel-content');
+
+    if (!resizeHandle || !panelContent) return;
+
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    const startResize = (e) => {
+      isResizing = true;
+      startX = e.clientX || e.touches?.[0]?.clientX || 0;
+      startWidth = panelContent.offsetWidth;
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    };
+
+    const doResize = (e) => {
+      if (!isResizing) return;
+
+      const clientX = e.clientX || e.touches?.[0]?.clientX || 0;
+      const delta = startX - clientX; // Reversed because we're resizing from the right
+      const newWidth = Math.min(Math.max(startWidth + delta, 300), 800);
+      panelContent.style.width = newWidth + 'px';
+    };
+
+    const stopResize = () => {
+      if (!isResizing) return;
+      isResizing = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+
+      // Save width preference
+      localStorage.setItem('chatPanelWidth', panelContent.offsetWidth);
+    };
+
+    // Mouse events
+    resizeHandle.addEventListener('mousedown', startResize);
+    document.addEventListener('mousemove', doResize);
+    document.addEventListener('mouseup', stopResize);
+
+    // Touch events for mobile
+    resizeHandle.addEventListener('touchstart', startResize);
+    document.addEventListener('touchmove', doResize);
+    document.addEventListener('touchend', stopResize);
+
+    // Restore saved width
+    const savedWidth = localStorage.getItem('chatPanelWidth');
+    if (savedWidth) {
+      const width = parseInt(savedWidth, 10);
+      if (width >= 300 && width <= 800) {
+        panelContent.style.width = width + 'px';
+      }
     }
+  }
+
+  updateChatRecipientSelector() {
+    // For backwards compatibility with non-host players
+    const select = document.getElementById('chat-recipient');
+    if (select && this.player && !this.player.isHost) {
+      // Non-host players might still use the old selector if it exists
+      return;
+    }
+  }
+
+  updateChatTabs() {
+    if (!this.player || !this.player.isHost) return;
+
+    const tabsContainer = document.getElementById('chat-tabs');
+    if (!tabsContainer) return;
+
+    // Clear existing tabs
+    tabsContainer.innerHTML = '';
+
+    // Add "All Players" tab
+    const allTab = document.createElement('div');
+    allTab.className = 'chat-tab';
+    allTab.dataset.recipient = 'all';
+    if (this.selectedChatTab === 'all') {
+      allTab.classList.add('active');
+    }
+    allTab.innerHTML = `
+      <span class="chat-tab-emoji">👥</span>
+      <span class="chat-tab-name">All Players</span>
+    `;
+    allTab.addEventListener('click', () => this.selectChatTab('all'));
+    tabsContainer.appendChild(allTab);
+
+    // Add tab for each player (except host)
+    for (const player of this.roomPlayers) {
+      if (player.id !== this.player.id) {
+        const tab = document.createElement('div');
+        tab.className = 'chat-tab';
+        tab.dataset.recipient = player.id;
+        if (this.selectedChatTab === player.id) {
+          tab.classList.add('active');
+        }
+
+        // Count unread messages for this player
+        const unreadCount = this.getUnreadCountForRecipient(player.id);
+        const unreadBadge = unreadCount > 0 ?
+          `<span class="chat-tab-unread">${unreadCount}</span>` : '';
+
+        tab.innerHTML = `
+          <span class="chat-tab-emoji">${player.emoji}</span>
+          <span class="chat-tab-name">${player.username || 'Unknown'}</span>
+          ${unreadBadge}
+        `;
+        tab.addEventListener('click', () => this.selectChatTab(player.id));
+        tabsContainer.appendChild(tab);
+      }
+    }
+  }
+
+  selectChatTab(recipientId) {
+    this.selectedChatTab = recipientId;
+
+    // Update active tab styling
+    const tabs = document.querySelectorAll('.chat-tab');
+    tabs.forEach(tab => {
+      if (tab.dataset.recipient === recipientId) {
+        tab.classList.add('active');
+        // Remove unread badge when switching to this tab
+        const unreadBadge = tab.querySelector('.chat-tab-unread');
+        if (unreadBadge) {
+          unreadBadge.remove();
+        }
+      } else {
+        tab.classList.remove('active');
+      }
+    });
+
+    // Re-render messages to filter by selected tab
+    this.renderAllChatMessages();
+  }
+
+  getUnreadCountForRecipient(recipientId) {
+    // Count messages from this recipient that haven't been "read"
+    // For simplicity, we'll return 0 for now since we don't track read status per tab
+    // This can be enhanced later if needed
+    return 0;
   }
   
   async sendChatMessage() {
     if (!this.player || !this.room) return;
-    
+
     const input = document.getElementById('chat-input');
-    const recipientSelect = document.getElementById('chat-recipient');
-    
+
     const content = input.value.trim();
     if (!content) return;
-    
+
     // Non-host players always message the host
     // Host can choose recipients
     let recipientId;
     let isTemporary = false;
-    
+
     if (this.player.isHost) {
-      recipientId = recipientSelect.value === 'all' ? null : recipientSelect.value;
+      // Use the selected tab to determine recipient
+      recipientId = this.selectedChatTab === 'all' ? null : this.selectedChatTab;
       // Check if temporary message is selected
       const tempCheckbox = document.getElementById('chat-temp-checkbox');
       isTemporary = tempCheckbox && tempCheckbox.checked;
@@ -2220,25 +2533,74 @@ class ClockTowerApp {
     messageEl.dataset.recipientId = message.recipientId || 'all';
     messageEl.dataset.isFromHost = isFromHost;
     
-    // Build temp badge HTML if temporary
-    const tempBadgeHtml = isTemporary ? '<span class="chat-message-badge temp">⏱️ <span class="temp-countdown">30</span>s</span>' : '';
-    
-    messageEl.innerHTML = `
-      <div class="chat-message-header">
-        <span class="chat-message-sender">${message.senderEmoji} ${this.escapeHtml(senderName)}</span>
-        <span class="chat-message-badge ${badgeClass}">${badgeText}</span>
-        ${tempBadgeHtml}
-        <span class="chat-message-time">${time}</span>
-      </div>
-      <div class="chat-message-content">${parsedContent}</div>
-    `;
-    
-    container.appendChild(messageEl);
-    
-    // Start countdown for temporary messages
-    if (isTemporary) {
-      this.startTempMessageCountdown(messageEl);
+    // Store message ID for tracking
+    if (message.id) {
+      messageEl.dataset.messageId = message.id;
     }
+    
+    // Check if this is a temporary message for a player (not the host)
+    const isPlayerReceivingTemp = isTemporary && this.player && !this.player.isHost;
+    
+    // Check if this temp message has already been revealed
+    const revealedKey = message.id ? `tempMsg_${message.id}_revealed` : null;
+    const isAlreadyRevealed = revealedKey ? localStorage.getItem(revealedKey) === 'true' : false;
+    
+    // Build temp badge HTML if temporary
+    // Host sees a static indicator, players see a countdown (after reveal)
+    let tempBadgeHtml = '';
+    if (isTemporary) {
+      if (this.player && this.player.isHost) {
+        // Host sees static "Temporary" indicator
+        tempBadgeHtml = '<span class="temp-indicator-host">⏱️ Temporary</span>';
+      } else if (isAlreadyRevealed) {
+        // Player has already revealed this message - show countdown
+        tempBadgeHtml = '<span class="chat-message-badge temp">⏱️ <span class="temp-countdown">30</span>s</span>';
+      }
+    }
+
+    // For players receiving a temp message that hasn't been revealed yet, show hidden state
+    if (isPlayerReceivingTemp && !isAlreadyRevealed) {
+      messageEl.classList.add('temp-hidden');
+      messageEl.innerHTML = `
+        <div class="chat-message-header">
+          <span class="chat-message-sender">${message.senderEmoji} ${this.escapeHtml(senderName)}</span>
+          <span class="chat-message-badge ${badgeClass}">${badgeText}</span>
+          <span class="chat-message-badge temp">⏱️ Temporary</span>
+          <span class="chat-message-time">${time}</span>
+        </div>
+        <div class="temp-hidden-content">
+          <span class="temp-hidden-icon">🔒</span>
+          <span class="temp-hidden-text">The host has sent you a temporary message</span>
+          <span class="temp-hidden-action">Tap to reveal (30s to read)</span>
+        </div>
+        <div class="chat-message-content temp-actual-content hidden">${parsedContent}</div>
+      `;
+      
+      // Add click handler to reveal the message
+      const revealHandler = () => {
+        this.revealTempMessage(messageEl, message);
+        messageEl.removeEventListener('click', revealHandler);
+      };
+      messageEl.addEventListener('click', revealHandler);
+      messageEl.style.cursor = 'pointer';
+    } else {
+      messageEl.innerHTML = `
+        <div class="chat-message-header">
+          <span class="chat-message-sender">${message.senderEmoji} ${this.escapeHtml(senderName)}</span>
+          <span class="chat-message-badge ${badgeClass}">${badgeText}</span>
+          ${tempBadgeHtml}
+          <span class="chat-message-time">${time}</span>
+        </div>
+        <div class="chat-message-content">${parsedContent}</div>
+      `;
+      
+      // Start countdown for already-revealed temporary messages (players only)
+      if (isPlayerReceivingTemp && isAlreadyRevealed) {
+        this.startTempMessageCountdown(messageEl, message.id);
+      }
+    }
+
+    container.appendChild(messageEl);
     
     // Add click handler for host to quickly reply
     if (this.player && this.player.isHost) {
@@ -2261,17 +2623,61 @@ class ClockTowerApp {
     });
   }
   
-  startTempMessageCountdown(messageEl) {
-    let secondsLeft = 30;
+  startTempMessageCountdown(messageEl, messageId) {
+    const COUNTDOWN_DURATION = 30; // seconds
     const countdownEl = messageEl.querySelector('.temp-countdown');
-    
+
+    if (!messageId || !countdownEl) return;
+
+    // Check if we've already seen this message
+    const seenKey = `tempMsg_${messageId}_seenAt`;
+    let seenAt = localStorage.getItem(seenKey);
+
+    if (!seenAt) {
+      // First time seeing this message - record the timestamp
+      seenAt = Date.now();
+      localStorage.setItem(seenKey, seenAt);
+    } else {
+      seenAt = parseInt(seenAt, 10);
+    }
+
+    // Calculate remaining time based on when we first saw it
+    const elapsed = Math.floor((Date.now() - seenAt) / 1000);
+    let secondsLeft = Math.max(0, COUNTDOWN_DURATION - elapsed);
+
+    // If already expired, remove immediately
+    if (secondsLeft <= 0) {
+      messageEl.remove();
+      localStorage.removeItem(seenKey);
+      if (messageId) {
+        localStorage.removeItem(`tempMsg_${messageId}_revealed`);
+      }
+      const container = document.getElementById('chat-messages');
+      if (container && container.querySelectorAll('.chat-message').length === 0) {
+        container.innerHTML = '<div class="chat-empty">No messages yet</div>';
+      }
+      return;
+    }
+
+    // Update countdown display
+    countdownEl.textContent = secondsLeft;
+
+    // Add warning classes if needed
+    if (secondsLeft <= 10) {
+      messageEl.classList.add('temp-warning');
+    }
+    if (secondsLeft <= 5) {
+      messageEl.classList.add('temp-critical');
+    }
+
+    // Start the countdown interval
     const interval = setInterval(() => {
       secondsLeft--;
-      
+
       if (countdownEl) {
         countdownEl.textContent = secondsLeft;
       }
-      
+
       // Add warning class when time is low
       if (secondsLeft <= 10) {
         messageEl.classList.add('temp-warning');
@@ -2279,13 +2685,18 @@ class ClockTowerApp {
       if (secondsLeft <= 5) {
         messageEl.classList.add('temp-critical');
       }
-      
+
       if (secondsLeft <= 0) {
         clearInterval(interval);
         // Fade out and remove
         messageEl.classList.add('temp-fading');
         setTimeout(() => {
           messageEl.remove();
+          // Clean up localStorage
+          localStorage.removeItem(seenKey);
+          if (messageId) {
+            localStorage.removeItem(`tempMsg_${messageId}_revealed`);
+          }
           // Show empty state if no messages left
           const container = document.getElementById('chat-messages');
           if (container && container.querySelectorAll('.chat-message').length === 0) {
@@ -2296,16 +2707,68 @@ class ClockTowerApp {
     }, 1000);
   }
   
+  revealTempMessage(messageEl, message) {
+    const messageId = message.id;
+    
+    // Mark as revealed in localStorage
+    if (messageId) {
+      localStorage.setItem(`tempMsg_${messageId}_revealed`, 'true');
+    }
+    
+    // Remove the hidden state
+    messageEl.classList.remove('temp-hidden');
+    messageEl.style.cursor = '';
+    
+    // Get the actual content
+    const parsedContent = this.parseMentions(this.escapeHtml(message.content));
+    
+    // Determine display info
+    const isDm = message.recipientId !== null;
+    const badgeClass = isDm ? 'dm' : 'group';
+    const badgeText = isDm ? '🔒 Private' : '👥 Everyone';
+    const senderName = 'Host';
+    const time = new Date(message.timestamp).toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    // Update the message content to show the actual message with countdown
+    messageEl.innerHTML = `
+      <div class="chat-message-header">
+        <span class="chat-message-sender">${message.senderEmoji} ${this.escapeHtml(senderName)}</span>
+        <span class="chat-message-badge ${badgeClass}">${badgeText}</span>
+        <span class="chat-message-badge temp">⏱️ <span class="temp-countdown">30</span>s</span>
+        <span class="chat-message-time">${time}</span>
+      </div>
+      <div class="chat-message-content">${parsedContent}</div>
+    `;
+    
+    // Add reveal animation
+    messageEl.classList.add('temp-revealing');
+    setTimeout(() => messageEl.classList.remove('temp-revealing'), 500);
+    
+    // Start the countdown now
+    this.startTempMessageCountdown(messageEl, messageId);
+    
+    // Re-add click handlers for role mentions
+    messageEl.querySelectorAll('.role-mention').forEach(mention => {
+      mention.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const roleName = mention.dataset.role;
+        this.openAlmanacWithRole(roleName);
+      });
+    });
+  }
+  
   selectRecipientFromMessage(messageEl) {
     const senderId = messageEl.dataset.senderId;
     const recipientId = messageEl.dataset.recipientId;
     const isFromHost = messageEl.dataset.isFromHost === 'true';
-    
-    const select = document.getElementById('chat-recipient');
-    if (!select) return;
-    
+
+    if (!this.player || !this.player.isHost) return;
+
     let targetRecipient;
-    
+
     if (isFromHost) {
       // Message is from us (host) - select the recipient we sent to
       targetRecipient = recipientId;
@@ -2313,30 +2776,48 @@ class ClockTowerApp {
       // Message is from a player - select that player to reply
       targetRecipient = senderId;
     }
-    
-    // Check if the option exists in the select
-    if (select.querySelector(`option[value="${targetRecipient}"]`)) {
-      select.value = targetRecipient;
-      
-      // Focus the input for quick typing
-      document.getElementById('chat-input').focus();
-      
-      // Brief visual feedback
-      messageEl.classList.add('selected-reply');
-      setTimeout(() => messageEl.classList.remove('selected-reply'), 300);
+
+    // Switch to the appropriate tab
+    if (targetRecipient) {
+      this.selectChatTab(targetRecipient);
     }
+
+    // Focus the input for quick typing
+    document.getElementById('chat-input').focus();
+
+    // Brief visual feedback
+    messageEl.classList.add('selected-reply');
+    setTimeout(() => messageEl.classList.remove('selected-reply'), 300);
   }
   
   renderAllChatMessages() {
     const container = document.getElementById('chat-messages');
     container.innerHTML = '';
-    
-    if (this.chatMessages.length === 0) {
+
+    // Filter messages based on selected tab (for host only)
+    let messagesToShow = this.chatMessages;
+
+    if (this.player && this.player.isHost && this.selectedChatTab !== 'all') {
+      // Show only messages to/from the selected player
+      messagesToShow = this.chatMessages.filter(msg => {
+        // Show messages where:
+        // 1. Recipient is the selected player (host -> player)
+        // 2. Sender is the selected player (player -> host)
+        const toSelectedPlayer = msg._recipientOnly === this.selectedChatTab;
+        const fromSelectedPlayer = msg.senderId === this.selectedChatTab;
+        return toSelectedPlayer || fromSelectedPlayer;
+      });
+    } else if (this.player && this.player.isHost && this.selectedChatTab === 'all') {
+      // Show only broadcast messages (messages with no specific recipient)
+      messagesToShow = this.chatMessages.filter(msg => !msg._recipientOnly);
+    }
+
+    if (messagesToShow.length === 0) {
       container.innerHTML = '<div class="chat-empty">No messages yet</div>';
       return;
     }
-    
-    for (const message of this.chatMessages) {
+
+    for (const message of messagesToShow) {
       this.renderChatMessage(message);
     }
   }
