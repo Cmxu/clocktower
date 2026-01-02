@@ -1,0 +1,31 @@
+{
+  "name": "blood-on-the-clocktower",
+  "version": "0.9.5",
+  "description": "Blood on the Clocktower online game lobby",
+  "main": "server.js",
+  "targets": {
+    "frontend": {
+      "source": "src/index.html",
+      "distDir": "dist",
+      "publicUrl": "/"
+    }
+  },
+  "scripts": {
+    "start": "npm run build && node server.js",
+    "dev": "npm run build && node server.js",
+    "dev:watch": "parcel watch --target frontend",
+    "build": "parcel build --target frontend",
+    "restart": "lsof -ti:7105 | xargs kill -9 2>/dev/null || true && npm start",
+    "test:game": "node test-game.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "uuid": "^9.0.0",
+    "cookie-parser": "^1.4.6"
+  },
+  "devDependencies": {
+    "parcel": "^2.12.0",
+    "playwright": "^1.40.0"
+  }
+}

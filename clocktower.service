@@ -1,0 +1,21 @@
+[Unit]
+Description=Blood on the Clocktower Lobby Service
+After=network.target
+
+[Service]
+Type=simple
+User=cmxu
+WorkingDirectory=/home/cmxu/projects/clocktower
+ExecStart=/home/cmxu/.nvm/versions/node/v24.4.0/bin/node server.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=clocktower
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PORT=7105
+
+[Install]
+WantedBy=multi-user.target

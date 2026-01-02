@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>Blood on the Clocktower</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕐</text></svg>">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="background-overlay"></div>
+  <div class="blood-drip"></div>
+  
+  <!-- Info Button (Always Visible) -->
+  <button id="info-btn" class="info-btn" title="Role Almanac">ⓘ</button>
+
+  <!-- Chat Button (Visible when in room) -->
+  <button id="chat-btn" class="chat-btn hidden" title="Messages">💬</button>
+
+  <div class="container">
+    <header>
+      <div class="analog-clock" id="analog-clock">
+        <div class="clock-face">
+          <div class="clock-center"></div>
+          <div class="clock-hand hour-hand" id="hour-hand"></div>
+          <div class="clock-hand minute-hand" id="minute-hand"></div>
+          <div class="clock-hand second-hand" id="second-hand"></div>
+          <div class="clock-marker marker-12"></div>
+          <div class="clock-marker marker-3"></div>
+          <div class="clock-marker marker-6"></div>
+          <div class="clock-marker marker-9"></div>
+        </div>
+      </div>
+      <h1>Blood on the Clocktower</h1>
+      <p class="tagline">The demon lurks among you...</p>
+    </header>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="screen active">
+      <div class="spinner"></div>
+      <p>Awakening the spirits...</p>
+    </div>
+
+    <!-- Main Menu Screen -->
+    <div id="menu-screen" class="screen">
+      <div class="player-card" id="player-preview">
+        <div class="player-emoji-wrapper" id="emoji-picker-trigger">
+          <div class="player-emoji" id="preview-emoji">🐺</div>
+          <div class="emoji-edit-hint">✏️</div>
+        </div>
+        <div class="player-info">
+          <input type="text" id="username-input" placeholder="Enter your name..." maxlength="20">
+        </div>
+      </div>
+      
+      <!-- Emoji Picker Popup -->
+      <div id="emoji-picker-popup" class="emoji-picker-popup hidden">
+        <div class="emoji-picker-header">
+          <span>Choose your icon</span>
+          <button id="close-emoji-picker" class="close-btn-small">✕</button>
+        </div>
+        <div class="emoji-picker-input-wrapper">
+          <input type="text" id="custom-emoji-input" placeholder="Enter any emoji...">
+          <button id="save-emoji-btn" class="btn-small-primary">Save</button>
+        </div>
+        <div class="emoji-picker-divider"><span>or choose from</span></div>
+        <div class="emoji-picker-grid" id="emoji-grid">
+          <!-- Animal emojis will be populated here -->
+        </div>
+      </div>
+
+      <div class="menu-buttons">
+        <div class="join-form">
+          <input type="text" id="room-code-input" placeholder="XXXX" maxlength="4" class="code-input">
+          <button id="join-room-btn" class="btn-primary">
+            <span class="btn-icon">🚪</span>
+            Join Room
+          </button>
+        </div>
+        <div class="divider">
+          <span>or</span>
+        </div>
+        <button id="create-room-btn" class="btn-primary">
+          <span class="btn-icon">⚰️</span>
+          Create Room
+        </button>
+      </div>
+    </div>
+
+    <!-- Room Screen -->
+    <div id="room-screen" class="screen">
+      <div class="room-header">
+        <button id="leave-room-btn" class="btn-danger btn-small">
+          <span class="btn-icon">🚶</span>
+          Leave
+        </button>
+        <div class="room-code-flat">
+          <span>Room Code: </span><span class="code" id="display-room-code">XXXX</span>
+          <button id="copy-code-btn" class="btn-icon-only" title="Copy code">📋</button>
+        </div>
+        <button id="gong-btn" class="gong-btn hidden" title="Ring the Gong">🔔</button>
+        <button id="settings-btn" class="settings-btn hidden" title="Settings">⚙️</button>
+      </div>
+
+      <!-- Your Role Display (for non-host players) -->
+      <div id="my-role-section" class="my-role-section hidden">
+        <div class="role-card">
+          <div class="role-header">
+            <span class="role-category" id="my-role-category">Townsfolk</span>
+            <h3 id="my-role-name">Your Role</h3>
+          </div>
+          <p class="role-description" id="my-role-description">Your role will appear here...</p>
+        </div>
+      </div>
+
+
+      <!-- Grimoire (Host Only - shows all player roles) -->
+      <div id="grimoire-section" class="grimoire-section hidden">
+        <div class="grimoire-card">
+          <div class="grimoire-header">
+            <span class="grimoire-icon">📖</span>
+            <h3>The Grimoire</h3>
+            <span class="grimoire-subtitle">Only you can see this</span>
+            <button id="copy-grimoire-btn" class="copy-grimoire-btn" title="Copy all roles to clipboard">📋</button>
+          </div>
+          <div class="grimoire-list" id="grimoire-list">
+            <!-- Player roles will be inserted here -->
+          </div>
+        </div>
+      </div>
+
+
+      <div class="players-section">
+        <h3><span class="icon">👥</span> Players <span class="player-count" id="player-count">(0)</span></h3>
+        <div class="players-circle" id="players-list">
+          <div class="circle-table"></div>
+          <div class="host-center" id="host-center"></div>
+          <!-- Players will be inserted here -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Version Footer -->
+    <footer class="version-footer">
+      <span id="version-display">Loading...</span>
+    </footer>
+  </div>
+
+  <!-- Role Almanac Side Panel -->
+  <div id="almanac-panel" class="side-panel hidden">
+    <div class="side-panel-backdrop"></div>
+    <div class="side-panel-content">
+      <div class="side-panel-header">
+        <h3><span class="icon">📚</span> Role Almanac</h3>
+        <button id="close-almanac-btn" class="close-btn">✕</button>
+      </div>
+      
+      <div class="side-panel-body">
+        <!-- Dropdown for main menu (not in room) -->
+        <div class="almanac-role-set-selector" id="almanac-role-set-selector">
+          <label for="almanac-role-set-select">Role Set:</label>
+          <select id="almanac-role-set-select">
+            <!-- Options populated by JS -->
+          </select>
+        </div>
+        <!-- Display for in-room (no dropdown) -->
+        <div class="almanac-role-set-display hidden" id="almanac-role-set-display">
+          <span class="role-set-label">Role Set:</span>
+          <span class="role-set-name" id="almanac-role-set-name">Trouble Brewing</span>
+        </div>
+        <p class="almanac-intro">Reference guide for all available roles</p>
+        
+        <div class="almanac-categories">
+          <!-- Townsfolk -->
+          <div class="almanac-category-section">
+            <div class="almanac-category-header Townsfolk">
+              <span class="category-icon">😇</span>
+              <span class="category-name">Townsfolk</span>
+              <span class="category-description">Good players with helpful abilities</span>
+            </div>
+            <div class="almanac-role-list" id="almanac-Townsfolk">
+              <!-- Roles will be inserted here -->
+            </div>
+          </div>
+          
+          <!-- Outsiders -->
+          <div class="almanac-category-section">
+            <div class="almanac-category-header Outsiders">
+              <span class="category-icon">🤡</span>
+              <span class="category-name">Outsiders</span>
+              <span class="category-description">Good players with tricky abilities</span>
+            </div>
+            <div class="almanac-role-list" id="almanac-Outsiders">
+              <!-- Roles will be inserted here -->
+            </div>
+          </div>
+          
+          <!-- Minions -->
+          <div class="almanac-category-section">
+            <div class="almanac-category-header Minions">
+              <span class="category-icon">😈</span>
+              <span class="category-name">Minions</span>
+              <span class="category-description">Evil players who serve the Demon</span>
+            </div>
+            <div class="almanac-role-list" id="almanac-Minions">
+              <!-- Roles will be inserted here -->
+            </div>
+          </div>
+          
+          <!-- Demons -->
+          <div class="almanac-category-section">
+            <div class="almanac-category-header Demons">
+              <span class="category-icon">👹</span>
+              <span class="category-name">Demons</span>
+              <span class="category-description">The evil leader who kills at night</span>
+            </div>
+            <div class="almanac-role-list" id="almanac-Demons">
+              <!-- Roles will be inserted here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal (Host Only) -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><span class="icon">⚙️</span> Host Settings</h3>
+        <button id="close-settings-btn" class="close-btn">✕</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="role-set-selector">
+          <label for="role-set-select">Role Set:</label>
+          <select id="role-set-select">
+            <!-- Options populated by JS -->
+          </select>
+        </div>
+        
+        <div class="role-selection">
+          <!-- Townsfolk -->
+          <div class="role-category-section">
+            <div class="category-header Townsfolk" data-category="Townsfolk">
+              <span class="category-icon">😇</span>
+              <span class="category-name">Townsfolk</span>
+              <span class="category-counts"><span class="category-count" id="count-Townsfolk">0</span><span class="category-ref hidden" id="ref-Townsfolk"></span></span>
+              <span class="expand-icon">▼</span>
+            </div>
+            <div class="role-list" id="roles-Townsfolk">
+              <!-- Roles will be inserted here -->
+            </div>
+          </div>
+          
+          <!-- Outsiders -->
+          <div class="role-category-section">
+            <div class="category-header Outsiders" data-category="Outsiders">
+              <span class="category-icon">🤡</span>
+              <span class="category-name">Outsiders</span>
+              <span class="category-counts"><span class="category-count" id="count-Outsiders">0</span><span class="category-ref hidden" id="ref-Outsiders"></span></span>
+              <span class="expand-icon">▼</span>
+            </div>
+            <div class="role-list" id="roles-Outsiders">
+              <!-- Roles will be inserted here -->
+            </div>
+          </div>
+          
+          <!-- Minions -->
+          <div class="role-category-section">
+            <div class="category-header Minions" data-category="Minions">
+              <span class="category-icon">😈</span>
+              <span class="category-name">Minions</span>
+              <span class="category-counts"><span class="category-count" id="count-Minions">0</span><span class="category-ref hidden" id="ref-Minions"></span></span>
+              <span class="expand-icon">▼</span>
+            </div>
+            <div class="role-list" id="roles-Minions">
+              <!-- Roles will be inserted here -->
+            </div>
+          </div>
+          
+          <!-- Demons -->
+          <div class="role-category-section">
+            <div class="category-header Demons" data-category="Demons">
+              <span class="category-icon">👹</span>
+              <span class="category-name">Demons</span>
+              <span class="category-counts"><span class="category-count" id="count-Demons">0</span><span class="category-ref hidden" id="ref-Demons"></span></span>
+              <span class="expand-icon">▼</span>
+            </div>
+            <div class="role-list" id="roles-Demons">
+              <!-- Roles will be inserted here -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <div class="settings-summary">
+          <span>Selected roles: <strong id="total-roles">0</strong></span>
+          <span>Players: <strong id="total-players">0</strong></span>
+        </div>
+        <div class="btn-row">
+          <button id="assign-roles-btn" class="btn-primary">
+            <span class="btn-icon">🎭</span>
+            Assign Roles
+          </button>
+          <button id="reset-roles-btn" class="btn-secondary hidden">
+            <span class="btn-icon">🔄</span>
+            Reset Roles
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Side Panel -->
+  <div id="chat-panel" class="side-panel chat-panel hidden">
+    <div class="side-panel-backdrop"></div>
+    <div class="side-panel-content chat-panel-content">
+      <div class="side-panel-header">
+        <h3><span class="icon">💬</span> Messages</h3>
+        <button id="close-chat-btn" class="close-btn">✕</button>
+      </div>
+      
+      <div class="side-panel-body chat-body">
+        <div class="chat-messages" id="chat-messages">
+          <!-- Messages will be inserted here -->
+          <div class="chat-empty">No messages yet</div>
+        </div>
+      </div>
+      
+      <!-- Host-only: Message composer -->
+      <div id="chat-composer" class="chat-composer hidden">
+        <div class="chat-recipient-selector">
+          <label>Send to:</label>
+          <select id="chat-recipient">
+            <option value="all">👥 Everyone</option>
+            <!-- Player options will be inserted here -->
+          </select>
+        </div>
+        <div class="chat-input-wrapper">
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Type a message... (@ for mentions)" maxlength="500" autocomplete="off">
+            <button id="chat-send-btn" class="btn-primary chat-send-btn">
+              <span>📤</span>
+            </button>
+          </div>
+          <!-- Autocomplete dropdown -->
+          <div id="chat-autocomplete" class="chat-autocomplete hidden">
+            <!-- Autocomplete options will be inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
+

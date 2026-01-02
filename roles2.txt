@@ -1,0 +1,118 @@
+Here are the roles for the **Bad Moon Rising** edition with the asterisk replaced as requested:
+
+Townsfolk 
+
+* 
+**Grandmother**: You start knowing a good player & character. If the Demon kills them, you die too.
+
+
+* 
+**Sailor**: Each night, choose a living player: either you, or they, are drunk until dusk. You can not die.
+
+
+* 
+**Chambermaid**: Each night, choose 2 alive players (not yourself): you learn how many woke tonight due to their ability.
+
+
+* 
+**Exorcist**: Each night (Not the First Night), choose a player (different to last night): the Demon, if chosen, learns who you are then doesn't wake tonight.
+
+
+* 
+**Innkeeper**: Each night (Not the First Night), choose 2 players: they can not die tonight, but 1 is drunk until dusk.
+
+
+* 
+**Gambler**: Each night (Not the First Night), choose a player & guess their character: if you guess wrong, you die.
+
+
+* 
+**Gossip**: Each day, you may make a public statement. Tonight, if it was true, a player dies.
+
+
+* 
+**Courtier**: Once per game, at night, choose a character: they are drunk for 3 nights & 3 days.
+
+
+* 
+**Professor**: Once per game, at night (Not the First Night), choose a dead player: if they are a Townsfolk, they are resurrected.
+
+
+* 
+**Minstrel**: When a Minion dies by execution, all other players (except Travellers) are drunk until dusk tomorrow.
+
+
+* 
+**Tea Lady**: If both your alive neighbours are good, they can't die.
+
+
+* 
+**Pacifist**: Executed good players might not die.
+
+
+* 
+**Fool**: The first time you die, you don't.
+
+
+
+---
+
+Outsiders 
+
+* 
+**Tinker**: You might die at any time.
+
+
+* 
+**Moonchild**: When you learn that you died, publicly choose 1 alive player. Tonight, if it was a good player, they die.
+
+
+* 
+**Goon**: Each night, the 1st player to choose you with their ability is drunk until dusk. You become their alignment.
+
+
+* 
+**Lunatic**: You think you are a Demon, but you are not. The Demon knows who you are & who you choose at night.
+
+
+
+---
+
+Minions 
+
+* 
+**Godfather**: You start knowing which Outsiders are in play. If 1 died today, choose a player tonight: they die. [-1 or +1 Outsider].
+
+
+* 
+**Devil's Advocate**: Each night, choose a living player (different to last night): if executed tomorrow, they don't die.
+
+
+* 
+**Assassin**: Once per game, at night (Not the First Night), choose a player: they die, even if for some reason they could not.
+
+
+* 
+**Mastermind**: If the Demon dies by execution (ending the game), play for 1 more day. If a player is then executed, their team loses.
+
+
+
+---
+
+Demons 
+
+* 
+**Zombuul**: Each night (Not the First Night), if no-one died today, choose a player: they die. The 1st time you die, you live but register as dead.
+
+
+* 
+**Pukka**: Each night, choose a player: they are poisoned. The previously poisoned player dies then becomes healthy.
+
+
+* 
+**Shabaloth**: Each night (Not the First Night), choose 2 players: they die. A dead player you chose last night might be regurgitated.
+
+
+* 
+**Po**: Each night (Not the First Night), you may choose a player: they die. If your last choice was no-one, choose 3 players tonight.
+

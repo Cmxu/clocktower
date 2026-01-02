@@ -1,0 +1,115 @@
+{
+  "Role Set": "Bad Moon Rising",
+  "Roles": {
+    "Townsfolk": [
+      {
+        "name": "Grandmother",
+        "description": "You start knowing a good player & character. If the Demon kills them, you die too."
+      },
+      {
+        "name": "Sailor",
+        "description": "Each night, choose a living player: either you, or they, are drunk until dusk. You can not die."
+      },
+      {
+        "name": "Chambermaid",
+        "description": "Each night, choose 2 alive players (not yourself): you learn how many woke tonight due to their ability."
+      },
+      {
+        "name": "Exorcist",
+        "description": "Each night (Not the First Night), choose a player (different to last night): the Demon, if chosen, learns who you are then doesn't wake tonight."
+      },
+      {
+        "name": "Innkeeper",
+        "description": "Each night (Not the First Night), choose 2 players: they can not die tonight, but 1 is drunk until dusk."
+      },
+      {
+        "name": "Gambler",
+        "description": "Each night (Not the First Night), choose a player & guess their character: if you guess wrong, you die."
+      },
+      {
+        "name": "Gossip",
+        "description": "Each day, you may make a public statement. Tonight, if it was true, a player dies."
+      },
+      {
+        "name": "Courtier",
+        "description": "Once per game, at night, choose a character: they are drunk for 3 nights & 3 days."
+      },
+      {
+        "name": "Professor",
+        "description": "Once per game, at night (Not the First Night), choose a dead player: if they are a Townsfolk, they are resurrected."
+      },
+      {
+        "name": "Minstrel",
+        "description": "When a Minion dies by execution, all other players (except Travellers) are drunk until dusk tomorrow."
+      },
+      {
+        "name": "Tea Lady",
+        "description": "If both your alive neighbours are good, they can't die."
+      },
+      {
+        "name": "Pacifist",
+        "description": "Executed good players might not die."
+      },
+      {
+        "name": "Fool",
+        "description": "The first time you die, you don't."
+      }
+    ],
+    "Outsiders": [
+      {
+        "name": "Tinker",
+        "description": "You might die at any time."
+      },
+      {
+        "name": "Moonchild",
+        "description": "When you learn that you died, publicly choose 1 alive player. Tonight, if it was a good player, they die."
+      },
+      {
+        "name": "Goon",
+        "description": "Each night, the 1st player to choose you with their ability is drunk until dusk. You become their alignment."
+      },
+      {
+        "name": "Lunatic",
+        "description": "You think you are a Demon, but you are not. The Demon knows who you are & who you choose at night."
+      }
+    ],
+    "Minions": [
+      {
+        "name": "Godfather",
+        "description": "You start knowing which Outsiders are in play. If 1 died today, choose a player tonight: they die. [-1 or +1 Outsider]."
+      },
+      {
+        "name": "Devil's Advocate",
+        "description": "Each night, choose a living player (different to last night): if executed tomorrow, they don't die."
+      },
+      {
+        "name": "Assassin",
+        "description": "Once per game, at night (Not the First Night), choose a player: they die, even if for some reason they could not."
+      },
+      {
+        "name": "Mastermind",
+        "description": "If the Demon dies by execution (ending the game), play for 1 more day. If a player is then executed, their team loses."
+      }
+    ],
+    "Demons": [
+      {
+        "name": "Zombuul",
+        "description": "Each night (Not the First Night), if no-one died today, choose a player: they die. The 1st time you die, you live but register as dead."
+      },
+      {
+        "name": "Pukka",
+        "description": "Each night, choose a player: they are poisoned. The previously poisoned player dies then becomes healthy."
+      },
+      {
+        "name": "Shabaloth",
+        "description": "Each night (Not the First Night), choose 2 players: they die. A dead player you chose last night might be regurgitated."
+      },
+      {
+        "name": "Po",
+        "description": "Each night (Not the First Night), you may choose a player: they die. If your last choice was no-one, choose 3 players tonight."
+      }
+    ]
+  }
+}
+
+
